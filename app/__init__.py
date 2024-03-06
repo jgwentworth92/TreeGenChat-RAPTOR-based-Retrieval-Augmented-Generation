@@ -34,7 +34,7 @@ def create_app():
     app.add_middleware(LogMiddleware)
 
     # Include routers. Now, we're using a more generalized import from the 'routers' folder
-    load_plugins(app)
+
 
     # Root endpoint
     @app.get("/")
