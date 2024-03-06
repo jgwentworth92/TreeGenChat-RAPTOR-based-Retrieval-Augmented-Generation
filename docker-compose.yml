@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  fast-api-service:
+    build:
+      context: .
+      target: build-image
+    image: fastapi_boilerplate:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./logs:/code/logs"
+  
+    environment:
+      AUTH0_DOMAIN: "${AUTH0_DOMAIN}"
+      AUTH0_API_AUDIENCE: "${AUTH0_API_AUDIENCE}"
+      AUTH0_ISSUER: "${AUTH0_ISSUER}"
+      AUTH0_ALGORITHMS: "${AUTH0_ALGORITHMS}"

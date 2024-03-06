@@ -1,0 +1,11 @@
+venv
+__pycache__
+app/__pycache__
+tests/__pycache__
+.pytest_cache
+.env
+app.db
+*.log
+*.egg-info
+.vscode/
+instance
