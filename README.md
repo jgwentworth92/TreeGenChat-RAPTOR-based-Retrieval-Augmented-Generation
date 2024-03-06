@@ -1,106 +1,206 @@
-# FastApiJWTReader
+# FastAPI Dynamic Plugins Framework
 
 ## Description
 
-FastApiJWTReader offers a secure, scalable solution for JWT token authentication and management within FastAPI applications. Utilizing Auth0, it ensures robust security measures are in place, simplifying the authentication process while maintaining high security standards.
+The FastAPI Dynamic Plugins Framework is designed to provide a secure and scalable infrastructure for JWT token authentication and application functionality extension through a dynamic plugin system. By leveraging Auth0, the framework ensures robust security measures for JWT token management, streamlining the authentication process while maintaining high security standards. Aimed at offering a foundational architecture for FastAPI applications, this framework facilitates easy application customization and scalability through the integration of modular plugins.
 
-## Plugin System Overview
+## Dynamic Plugin System Overview
 
-This project implements a dynamic plugin system, designed to delegate business logic and application functionalities into separate, interchangeable modules known as "plugins". This system allows for easy extension and customization of the application by adding or removing plugins without altering the core application code.
+This framework features an innovative dynamic plugin system that allows for the delegation of business logic and application functionalities into separate, interchangeable modules known as "plugins". This system enhances application extensibility and customization, enabling developers to add or remove plugins without modifying the core application code.
 
 ### How It Works
 
-The application automatically discovers and loads plugins located in the `appfrwk/plugins` directory. Each plugin is a Python module or package that adheres to a specific structure, namely implementing a base `Plugin` class. The `PluginManager` handles the loading, listing, and execution of these plugins, enabling the application to execute plugin-specific logic dynamically based on incoming requests.
+Plugins are autonomously discovered and loaded from the specified plugin directory. Each plugin should be a self-contained Python package that includes business logic and optionally, API routes. This approach allows for significant flexibility in extending application capabilities.
 
-### Creating a Plugin
+## Creating a Plugin
 
-To create a new plugin, follow these steps:
+Creating a plugin for the FastAPI Dynamic Plugins Framework involves a few structured steps and adherence to a specific organization for each plugin package.
 
-1. Place your plugin within the `appfrwk/plugins` directory.
-2. Your plugin should include an `__init__.py` file that defines a class inheriting from the `Plugin` base class.
-3. Implement the `execute` method in your plugin class, which will contain the business logic for that plugin.
+### Plugin Directory Structure
 
-#### Plugin Structure Example
+A typical plugin might be structured as follows, assuming `plugin_name` is your plugin's name:
+
+```
+plugin_name/
+├── setup.py  # Entry point for the plugin, defining installation requirements and metadata.
+├── plugin_name/
+    ├── __init__.py  # Contains the business logic of the plugin.
+    └── routes.py    # Defines API routes specific to the plugin.
+```
+
+### Steps to Create a New Plugin
+
+1. **Plugin Setup**: Initialize your plugin directory with the structure outlined above. The top-level directory should match your plugin's name, containing a `setup.py` file and a subdirectory also named after your plugin. This subdirectory will house your business logic and API routes.
+
+2. **Implement Business Logic**: In `plugin_name/__init__.py`, implement the business logic for your plugin. This could be anything from data processing to extended application functionalities.
+
+3. **Define API Routes**: If your plugin exposes API endpoints, define these routes in `plugin_name/routes.py`. Use FastAPI's router to easily integrate with the main application.
+
+#### Example: setup.py for Your Plugin
 
 ```python
-# appfrwk/plugins/example_plugin/__init__.py
+from setuptools import setup, find_packages
 
-from appfrwk.plugins.plugin_base import Plugin
+setup(
+    name='plugin_name',
+    version='1.0.0',
+    packages=find_packages(),
+    install_requires=[
+        'fastapi',
+        # Any other dependencies your plugin requires
+    ],
+    # Optionally define entry points for dynamic discovery if needed
+)
+```
 
-class ExamplePlugin(Plugin):
-    def __init__(self):
-        super().__init__("ExamplePlugin")
+#### Example: Plugin Business Logic and Routes
 
-    def execute(self, data):
-        # Plugin-specific business logic here
-        return {"message": "This is an example plugin execution", "input": data}
+```python
+# plugin_name/plugin_name/__init__.py
+def process_data(data):
+    # Business logic here
+    return data
+
+# plugin_name/plugin_name/routes.py
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get("/example")
+async def example_route():
+    return {"message": "This route is provided by plugin_name."}
 ```
 
 ## API Documentation
 
+  
+
 FastAPI provides automatic interactive documentation at [http://localhost:8000/docs](http://localhost:8000/docs) or [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
+  
+  
 
 ### Environment Variables
 
+  
+
 Create a `.env` at root with the following environment variables:
 
+  
+  
 
 ```ini
+
 # .env
+
 AUTH0_DOMAIN=
+
 AUTH0_API_AUDIENCE=
+
 AUTH0_ISSUER=
+
 AUTH0_ALGORITHMS=
+
 ```
+
+  
 
 ### Docker-Compose Commands
 
+  
+
 **Quick Start:** Run the following command to build the image, upgrade the database, and run the application. This will create the image that will be used to run the application, and run the application.
 
+  
+
 ```bash
-docker-compose up --build
+
+docker-compose  up  --build
+
 ```
+
+  
 
 **Build the image:** Run the following command to build the image. This will create the image that will be used to run the application.
 
-```bash
-docker-compose build
-```
+  
 
 ```bash
-docker-compose up
+
+docker-compose  build
+
 ```
+
+  
+
+```bash
+
+docker-compose  up
+
+```
+
+  
 
 ### DockerFile Commands
 
+  
+
 Create the folders that will be mounted to the container.
+
+  
 
 **Windows:**
 
-```bash
-# building the image
-docker build -t fastapi_boilerplate:latest .
-# run the image, pass the environment variables, and mount the db & logs directories
-docker run --env-file .\.env -p 8000:8000 -v ${PWD}/logs:/code/logs fastapi_boilerplate:latest
-```
-
-**Mac/Linux:** I think
+  
 
 ```bash
+
 # building the image
-docker build -t fastapi_boilerplate:latest .
+
+docker  build  -t  fastapi_boilerplate:latest  .
+
 # run the image, pass the environment variables, and mount the db & logs directories
-docker run --env-file .env -p 8000:8000  -v $(pwd)/logs:/code/logs fastapi_boilerplate:latest
+
+docker  run  --env-file  .\.env  -p  8000:8000  -v ${PWD}/logs:/code/logs  fastapi_boilerplate:latest
+
 ```
+
+  
+
+**Mac/Linux:**
+
+  
+
+```bash
+
+# building the image
+
+docker  build  -t  fastapi_boilerplate:latest  .
+
+# run the image, pass the environment variables, and mount the db & logs directories
+
+docker  run  --env-file  .env  -p  8000:8000  -v  $(pwd)/logs:/code/logs  fastapi_boilerplate:latest
+
+```
+
+  
 
 ## Directory Structure
 
+  
+
 ```mint
+
 .
-├── app/                # Main FastAPI application
-├── appfrwk/            # Common framework code
-├── .env                # Env vars must be created and set here
-├── docker-compose.yml  # Pulls carlomos/firehoseai-api:latest
-├── requirements.txt    # Python dependencies
-└── setup.py            # Python package setup
+
+├── app/ # Main FastAPI application
+
+├── appfrwk/ # Common framework code
+
+├── .env # Env vars must be created and set here
+
+├── docker-compose.yml # Pulls carlomos/firehoseai-api:latest
+
+├── requirements.txt # Python dependencies
+
+└── setup.py # Python package setup
