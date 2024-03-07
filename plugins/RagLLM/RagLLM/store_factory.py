@@ -7,7 +7,7 @@ def get_vector_store(
     connection_string: str,
     embeddings: OpenAIEmbeddings,
     collection_name: str,
-    mode: str = "sync",
+    mode: str = "async",
 ):
     if mode == "sync":
         return ExtendedPgVector(
