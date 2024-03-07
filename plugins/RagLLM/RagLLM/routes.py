@@ -1,6 +1,3 @@
-import os
-
-from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI, HTTPException, APIRouter
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
@@ -12,6 +9,8 @@ from .models import DocumentModel, DocumentResponse
 from .store import AsnyPgVector
 from .store_factory import get_vector_store
 from appfrwk.logging_config import get_logger
+from semantic_text_splitter import TiktokenTextSplitter
+import hashlib
 
 config = get_config()
 log = get_logger(__name__)
@@ -66,25 +65,34 @@ def add_routes(app):
 @router.post("/add-documents/")
 async def add_documents(documents: list[DocumentModel]):
     try:
+
+        pdf_text = documents[0].page_content
+        splitter = TiktokenTextSplitter("gpt-3.5-turbo", trim_chunks=False)
+        MIN_TOKENS = 100
+        MAX_TOKENS = 1000
+
+        chunks_with_model = splitter.chunks(pdf_text, chunk_capacity=(MIN_TOKENS, MAX_TOKENS))
+        for i, chunk in enumerate(chunks_with_model):
+            log.info(f"CHUNK WITH MODEL {i + 1}: ")
         docs = [
             Document(
-                page_content=doc.page_content,
+                page_content=doc,
                 metadata=(
-                    {**doc.metadata, "digest": doc.generate_digest()}
-                    if doc.metadata
-                    else {"digest": doc.generate_digest()}
+
+                    {"digest": hashlib.md5(doc.encode()).hexdigest()}
                 ),
             )
-            for doc in documents
+            for doc in chunks_with_model
         ]
         ids = (
             await pgvector_store.aadd_documents(docs)
-            if isinstance(pgvector_store, AsnyPgVector)
-            else pgvector_store.add_documents(docs)
         )
-        return {"message": "Documents added successfully", "ids": ids}
+
+        return {"message": "Documents added successfully", "id": ids}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        log.error(f"Internal error 500: {e}")
+        raise HTTPException(status_code=500)
 
 
 @router.get("/get-all-ids/")
