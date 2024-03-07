@@ -31,11 +31,6 @@ RUN chmod +x entrypoint.sh
 
 # Install the application
 RUN pip install -e .
-RUN set -e; \
-    for plugin in plugins/*/ ; do \
-      echo "Installing plugin: $plugin"; \
-      pip install -e "$plugin"; \
-    done
 # Operational Stage
 FROM python:3.11-slim-bullseye AS build-image
 
