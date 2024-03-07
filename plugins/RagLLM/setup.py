@@ -13,7 +13,10 @@ setup(
         'langchain-openai',
         'SQLAlchemy',
         'psycopg2-binary',
-        'pgvector'
+        'pgvector',
+        'tiktoken',
+        'semantic-text-splitter',
+        'tokenizers'
     ],
     entry_points={
         'my_fastapi_app.plugins': [
