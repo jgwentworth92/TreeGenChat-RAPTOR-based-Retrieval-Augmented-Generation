@@ -3,6 +3,11 @@ FROM python:3.11-slim-bullseye AS compile-image
 
 WORKDIR /source
 
+# Install system dependencies including Git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user and set file ownership
 RUN useradd appuser && \
     chown -R appuser:appuser /source
@@ -31,6 +36,7 @@ RUN chmod +x entrypoint.sh
 
 # Install the application
 RUN pip install -e .
+
 # Operational Stage
 FROM python:3.11-slim-bullseye AS build-image
 

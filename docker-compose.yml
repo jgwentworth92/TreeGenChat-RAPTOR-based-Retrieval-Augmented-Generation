@@ -25,7 +25,20 @@ services:
     volumes:
       - pgdata2:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5433:5432" # Maps port 5432 inside the container to port 5433 on the host
+
+  convo-db:
+    image: postgres:15.1-bullseye
+    ports:
+      - "5432:5432" # Direct mapping of the default PostgreSQL port
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+
 
 volumes:
   pgdata2:
