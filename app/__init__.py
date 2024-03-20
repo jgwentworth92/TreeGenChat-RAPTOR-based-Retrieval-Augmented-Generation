@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.plugin import load_plugins
 # Import routers directly from the 'router' folder's '__init__.py' file
-
+from app.api.router.routes import router
 
 from appfrwk.config import get_config
 from appfrwk.logging_config import setup_logging, get_logger
@@ -13,11 +13,12 @@ from appfrwk.utils.verify_token import VerifyToken
 # Setup logging configuration
 setup_logging()
 
+
 def create_app():
     """
     Create a FastAPI application
     """
-    
+
     # Fetch configurations from the environment
     config = get_config()
 
@@ -32,9 +33,8 @@ def create_app():
 
     # Add middleware
     app.add_middleware(LogMiddleware)
-
+    app.include_router(router)
     # Include routers. Now, we're using a more generalized import from the 'routers' folder
-
 
     # Root endpoint
     @app.get("/")
