@@ -23,17 +23,17 @@ RUN python3 -m venv /source/venv
 # Activate the virtual environment
 ENV PATH="/source/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copying the rest of the files with the necessary permissions
 COPY --chown=appuser:appuser . .
-Write an archetype blog post titled why use archetype to enhance your business that uses the exact keyword carl jung
-at least once every 100 words. The blog post should include an introduction, main body,
- and conclusion. The conclusion should invite readers to leave a comment. The main
- body should be split into at least 4 different subsections.
+
 # Ensure entrypoint.sh is executable
 RUN chmod +x entrypoint.sh
 
