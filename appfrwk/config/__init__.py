@@ -7,7 +7,6 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-
 class Settings(BaseSettings):
     """Base Configuration Class"""
 
@@ -34,7 +33,7 @@ class Settings(BaseSettings):
     # Directory config
     APP_ROOT_DIRECTORY: str = os.getcwd()
     LOG_DIRECTORY: str = os.path.join(APP_ROOT_DIRECTORY, "logs")
-    PLUGINS_DIRECTORY: str = os.path.join("appfrwk.plugins")  
+    PLUGINS_DIRECTORY: str = os.path.join("appfrwk.plugins")
     OPENAI_API_KEY: str
     SERVICE_MODEL: str = os.getenv("SERVICE_MODEL", "gpt-4")
     SERVICE_TEMPERATURE: float = os.getenv("SERVICE_TEMPERATURE", 0.5)
@@ -44,7 +43,10 @@ class Settings(BaseSettings):
     SERVICE_PRESENCE_PENALTY: float = os.getenv("SERVICE_PRESENCE_PENALTY", 0)
     # Database config
     DATABASE_URL: str
-    DATABASE_URL2:str
+    DATABASE_URL2: str
+    collection_name: str
+
+
 class ProductionConfig(Settings):
     pass
 
