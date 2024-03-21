@@ -2,6 +2,7 @@ import hashlib
 import os
 from typing import List
 
+from langchain_community.document_loaders.pdf import PyPDFLoader
 from redis import Redis
 
 from autogen import Cache
@@ -72,7 +73,6 @@ def add_routes(app):
     app.include_router(router)
 
 
-
 @router.post("/add-documents/")
 async def add_documents(documents: list[DocumentModel]):
     try:
@@ -80,7 +80,7 @@ async def add_documents(documents: list[DocumentModel]):
         pdf_text = documents[0].page_content
         splitter = TextSplitter.from_tiktoken_model("gpt-3.5-turbo", trim_chunks=False)
         MIN_TOKENS = 100
-        MAX_TOKENS = 1000
+        MAX_TOKENS = 2000
 
         chunks_with_model = splitter.chunks(pdf_text, chunk_capacity=(MIN_TOKENS, MAX_TOKENS))
         for i, chunk in enumerate(chunks_with_model):
@@ -104,16 +104,18 @@ async def add_documents(documents: list[DocumentModel]):
     except Exception as e:
         log.error(f"Internal error 500: {e}")
         raise HTTPException(status_code=500)
+
+
 @router.post("/add-documents-internal-pdf/")
 async def add_documents(pdf_name: str):
     try:
-        pdf_path=os.path.join(
-            os.getcwd(), "appfrwk", "config", "pdf",pdf_name)
+        pdf_path = os.path.join(
+            os.getcwd(), "appfrwk", "config", "pdf", pdf_name)
         loader = PyMuPDFLoader(pdf_path)
         documents = loader.load()
         text_splitter = RecursiveCharacterTextSplitter(
 
-            chunk_size=1000,
+            chunk_size=2000,
             chunk_overlap=20,
             length_function=len,
             is_separator_regex=False,
@@ -129,6 +131,36 @@ async def add_documents(pdf_name: str):
     except Exception as e:
         log.error(f"Internal error 500: {e}")
         raise HTTPException(status_code=500)
+
+
+@router.post("/add-documents-agentic_chunking/")
+async def add_documents_agentic_chunking(pdf_url: str):
+    try:
+        Service = LangChainService(model_name="gpt-3.5-turbo", template=template)
+        loader = PyPDFLoader(pdf_url)
+        documents = loader.load_and_split()
+        id_list=[]
+        for docs in documents:
+            paragraphs = docs.page_content.split("\n\n")
+            text_propositions = []
+            for i, para in enumerate(paragraphs[:5]):
+                propositions = Service.get_propositions(para)
+                text_propositions.extend(propositions)
+                log.info(f"Done with {i}")
+
+            documents = Service.get_agentic_chunks(paragraphs)
+            log.info(f"You have {len(documents)} propositions")
+            log.info(documents[:10])
+            ids = (
+                await pgvector_store.aadd_documents(documents)
+            )
+            id_list.append(ids)
+        return id_list
+
+    except Exception as e:
+        log.error(f"Internal error 500: {e}")
+        raise HTTPException(status_code=500)
+
 
 @router.get("/get-all-ids/")
 async def get_all_ids():
