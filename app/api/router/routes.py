@@ -1,4 +1,5 @@
 import hashlib
+import os
 from typing import List
 
 from redis import Redis
@@ -10,7 +11,7 @@ from langchain.schema import Document
 from langchain_openai import OpenAIEmbeddings
 from semantic_text_splitter import TextSplitter
 from RagLLM.AutoGenIntergrations import AutoGenService
-
+from langchain_community.document_loaders import PyMuPDFLoader
 from RagLLM.LangChainIntergrations.langchainlayer import LangChainService
 from RagLLM.PGvector.models import DocumentModel, DocumentResponse
 from RagLLM.PGvector.store import AsnyPgVector
@@ -19,7 +20,7 @@ from RagLLM.Processing.langchain_processing import load_conversation_history
 from RagLLM.database import agent_schemas as schemas
 from RagLLM.database import db, crud, agent_schemas
 from RagLLM.database.user_schemas import UserCreate
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from appfrwk.config import get_config
 from appfrwk.logging_config import get_logger
 
@@ -49,16 +50,14 @@ template = """Answer the question based only on the following context:
 
 try:
 
-    CONNECTION_STRING = f"postgresql+psycopg2://myuser:mypassword@db:5432/mydatabase"
-
     OPENAI_API_KEY = config.OPENAI_API_KEY
     embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
     mode = "async"
     pgvector_store = get_vector_store(
-        connection_string=CONNECTION_STRING,
+        connection_string=f"{config.DATABASE_URL2}",
         embeddings=embeddings,
-        collection_name="testcollection",
+        collection_name=f"{config.collection_name}",
         mode=mode,
     )
     db.connect()
@@ -71,6 +70,7 @@ except Exception as e:
 
 def add_routes(app):
     app.include_router(router)
+
 
 
 @router.post("/add-documents/")
@@ -104,7 +104,31 @@ async def add_documents(documents: list[DocumentModel]):
     except Exception as e:
         log.error(f"Internal error 500: {e}")
         raise HTTPException(status_code=500)
+@router.post("/add-documents-internal-pdf/")
+async def add_documents(pdf_name: str):
+    try:
+        pdf_path=os.path.join(
+            os.getcwd(), "appfrwk", "config", "pdf",pdf_name)
+        loader = PyMuPDFLoader(pdf_path)
+        documents = loader.load()
+        text_splitter = RecursiveCharacterTextSplitter(
 
+            chunk_size=1000,
+            chunk_overlap=20,
+            length_function=len,
+            is_separator_regex=False,
+        )
+        docs = text_splitter.split_documents(documents)
+
+        ids = (
+            await pgvector_store.aadd_documents(docs)
+        )
+
+        return {"message": "Documents added successfully", "id": ids}
+
+    except Exception as e:
+        log.error(f"Internal error 500: {e}")
+        raise HTTPException(status_code=500)
 
 @router.get("/get-all-ids/")
 async def get_all_ids():
@@ -207,6 +231,24 @@ async def quick_response(message: schemas.UserMessage, db_session=Depends(db.get
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/rag_chain_with_source/")
+async def rag_chain_with_source_response(message: str):
+    Service = LangChainService(model_name=config.SERVICE_MODEL, template=template)
+
+    try:
+
+        result = Service.rag_chain_with_source.invoke(
+
+            message
+
+        )
+
+        return result
+    except Exception as e:
+        log.error(f"error code 500 {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/autogen_rag_chain_chat/")
 async def autogen_rag_response(message: schemas.UserMessage):
     config_list = [
@@ -269,23 +311,9 @@ async def get_conversation_messages(conversation_id: str, db_session=Depends(db.
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-redis = Redis(host='192.168.1.186', port=6379, db=0)
+redis = Redis(host='redisDB', port=6379, db=0)
 
 
 @router.on_event("startup")
 def startup_event():
     redis.ping()  # Check if Redis is up and running
-
-
-@router.get("/items/{item_id}")
-async def read_item(item_id: str, q: str = None):
-    redis_value = redis.get(item_id)
-    if redis_value is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return {"item_id": item_id, "q": q, "value": redis_value.decode()}
-
-
-@router.post("/items/{item_id}")
-def write_item(item_id: str, value: str):
-    redis.set(item_id, value)
-    return {"item_id": item_id, "value": value}
