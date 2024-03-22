@@ -49,7 +49,17 @@ def get_messages(conversation_id: str) -> List[Dict]:
         return []
 
 
+def display_conversation_messages(selected_conversation: str) -> List[Dict]:
+    st.write(f"**Selected Conversation**: {selected_conversation}")
 
+    messages = get_messages(selected_conversation['id'])
+
+
+    for message in messages:
+        with st.chat_message("user"):
+            st.write(message["user_message"])
+        with st.chat_message("assistant"):
+            st.write(message["agent_message"])
 def main():
     st.set_page_config(page_title="🤗💬 AIChat")
     st.title("Chat Interface")
@@ -72,15 +82,21 @@ def main():
     st.write(
         "This is a chat interface for the selected agent and conversation. You can send messages to the agent and see its responses.")
 
-    prompt = st.text_input("Enter a message:")
-    if prompt and selected_conversation:
-        with st.spinner("Thinking..."):
-            response = send_message(selected_conversation['id'], prompt)
-            if response:
-                with st.chat_message("user"):
-                    st.write(prompt)
+    if selected_conversation:
+        display_conversation_messages(selected_conversation)
+
+        # User-provided prompt
+        prompt = st.chat_input("Enter a message:")
+        if prompt:
+            with st.chat_message("user"):
+                st.write(prompt)
+            with st.spinner("Thinking..."):
+                response = send_message(selected_conversation['id'], prompt)
                 with st.chat_message("assistant"):
-                    st.write(response)
+                    st.write(response['response'])
+    else:
+        st.write("Please enter a message.")
+
 
 if __name__ == "__main__":
     main()

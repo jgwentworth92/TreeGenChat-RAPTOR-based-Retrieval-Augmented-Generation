@@ -8,5 +8,7 @@ app.db
 *.log
 *.egg-info
 .vscode/
-*.postgres-data
+*.postgres-data/
 instance
+
+
