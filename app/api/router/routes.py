@@ -115,7 +115,7 @@ async def add_documents(pdf_name: str):
         documents = loader.load()
         text_splitter = RecursiveCharacterTextSplitter(
 
-            chunk_size=2000,
+            chunk_size=500,
             chunk_overlap=20,
             length_function=len,
             is_separator_regex=False,
@@ -139,20 +139,15 @@ async def add_documents_agentic_chunking(pdf_url: str):
         Service = LangChainService(model_name="gpt-3.5-turbo", template=template)
         loader = PyPDFLoader(pdf_url)
         documents = loader.load_and_split()
-        id_list=[]
+        id_list = []
         for docs in documents:
             paragraphs = docs.page_content.split("\n\n")
-            text_propositions = []
-            for i, para in enumerate(paragraphs[:5]):
-                propositions = Service.get_propositions(para)
-                text_propositions.extend(propositions)
-                log.info(f"Done with {i}")
 
-            documents = Service.get_agentic_chunks(paragraphs)
+            documents_agentic_chunks = Service.get_agentic_chunks(paragraphs)
             log.info(f"You have {len(documents)} propositions")
-            log.info(documents[:10])
+            log.info(documents_agentic_chunks)
             ids = (
-                await pgvector_store.aadd_documents(documents)
+                await pgvector_store.aadd_documents(documents_agentic_chunks)
             )
             id_list.append(ids)
         return id_list
@@ -160,6 +155,26 @@ async def add_documents_agentic_chunking(pdf_url: str):
     except Exception as e:
         log.error(f"Internal error 500: {e}")
         raise HTTPException(status_code=500)
+
+
+@router.post("/add-documents-internet")
+async def add_documents_internet(pdf_filename: str):
+    loader = PyPDFLoader(pdf_filename)
+    documents = loader.load()
+    text_splitter = RecursiveCharacterTextSplitter(
+
+        chunk_size=500,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+    )
+    docs = text_splitter.split_documents(documents)
+
+    ids = (
+        await pgvector_store.aadd_documents(docs)
+    )
+
+    return {"message": "Documents added successfully", "id": ids}
 
 
 @router.get("/get-all-ids/")
