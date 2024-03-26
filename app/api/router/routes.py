@@ -4,7 +4,7 @@ from typing import List
 
 from langchain_community.document_loaders.pdf import PyPDFLoader
 from redis import Redis
-
+from RagLLM.Raptor.dyamic_raptor import recursive_embed_cluster_summarize
 from autogen import Cache
 from fastapi import HTTPException, APIRouter, Depends, WebSocket
 from langchain.globals import set_debug
@@ -177,52 +177,40 @@ async def add_documents_internet(pdf_filename: str):
     return {"message": "Documents added successfully", "id": ids}
 
 
-@router.get("/get-all-ids/")
-async def get_all_ids():
-    try:
-        if isinstance(pgvector_store, AsnyPgVector):
-            ids = await pgvector_store.get_all_ids()
-        else:
-            ids = pgvector_store.get_all_ids()
+@router.post("/add-documents-internet-raptor")
+async def add_documents_internet_raptor(pdf_filename: str):
+    loader = PyPDFLoader(pdf_filename)
+    documents = loader.load()
+    docs_texts = [d.page_content for d in documents]
+    """
+    chunk_size_tok = 2000
+    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        chunk_size=chunk_size_tok, chunk_overlap=0
+    )
+    d_sorted = sorted(documents, key=lambda x: x.metadata["source"])
+    d_reversed = list(reversed(d_sorted))
+    concatenated_content = "\n\n\n --- \n\n\n".join(
+        [doc.page_content for doc in d_reversed]
+    )
+    texts_split = text_splitter.split_text(concatenated_content)
+    """
+    leaf_texts = docs_texts
+    results = recursive_embed_cluster_summarize(leaf_texts, level=1, n_levels=3)
+    all_texts = leaf_texts.copy()
+    id_list = []
+    # Iterate through the results to extract summaries from each level and add them to all_texts
+    for level in sorted(results.keys()):
+        # Extract summaries from the current level's DataFrame
+        summaries = results[level][1]["summaries"].tolist()
+        # Extend all_texts with the summaries from the current level
+        all_texts.extend(summaries)
 
-        return ids
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        ids = (
+            await pgvector_store.aadd_documents(all_texts)
+        )
+        id_list.append(ids)
 
-
-@router.post("/get-documents-by-ids/", response_model=list[DocumentResponse])
-async def get_documents_by_ids(ids: list[str]):
-    try:
-        if isinstance(pgvector_store, AsnyPgVector):
-            existing_ids = await pgvector_store.get_all_ids()
-            documents = await pgvector_store.get_documents_by_ids(ids)
-        else:
-            existing_ids = pgvector_store.get_all_ids()
-            documents = pgvector_store.get_documents_by_ids(ids)
-
-        if not all(id in existing_ids for id in ids):
-            raise HTTPException(status_code=404, detail="One or more IDs not found")
-
-        return documents
-    except HTTPException as http_exc:
-        raise http_exc
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/delete-documents/")
-async def delete_documents(ids: list[str]):
-    try:
-
-        existing_ids = await pgvector_store.get_all_ids()
-        await pgvector_store.delete(ids=ids)
-
-        if not all(id in existing_ids for id in ids):
-            raise HTTPException(status_code=404, detail="One or more IDs not found")
-
-        return {"message": f"{len(ids)} documents deleted successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "Documents added successfully", "ids": id_list}
 
 
 @router.post("/create-conversation", response_model=schemas.Conversation)
@@ -273,6 +261,38 @@ async def quick_response(message: schemas.UserMessage, db_session=Depends(db.get
             user_message=message.message, agent_message=result, conversation_id=conversation.id)
         await crud.create_conversation_message(db_session, message=db_messages, conversation_id=conversation.id)
         return result
+    except Exception as e:
+        log.error(f"error code 500 {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent_rag_chain_chat/")
+async def agent_response(message: schemas.UserMessage, db_session=Depends(db.get_db)):
+    Service = LangChainService(model_name=config.SERVICE_MODEL, template=template)
+
+    try:
+        conversation = await crud.get_conversation(db_session, message.conversation_id)
+        log.info(f"User Message: {message.message}")
+
+    except Exception as e:
+        log.error(f"Error getting conversation: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    try:
+        chathistory = load_conversation_history(conversation, Service)
+        log.info(f"current chat history {Service.get_message_history()}")
+
+        result = Service.agent_executor.invoke(
+            {
+                "input": message.message,
+                "chat_history": Service.get_message_history(),
+            }
+        )
+
+        db_messages = agent_schemas.MessageCreate(
+            user_message=message.message, agent_message=result["output"], conversation_id=conversation.id)
+        await crud.create_conversation_message(db_session, message=db_messages, conversation_id=conversation.id)
+
+        return result["output"]
     except Exception as e:
         log.error(f"error code 500 {e}")
         raise HTTPException(status_code=500, detail=str(e))
