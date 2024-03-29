@@ -1,6 +1,5 @@
 from fastapi import Depends, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from app.plugin import load_plugins
 from app.api.router.routes import router
 from appfrwk.config import get_config
 from appfrwk.logging_config import setup_logging, get_logger
