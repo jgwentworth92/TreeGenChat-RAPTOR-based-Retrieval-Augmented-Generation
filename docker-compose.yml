@@ -1,10 +1,6 @@
 version: '3.9'
 
 services:
-  redisDB:
-    image: redislabs/redismod
-    ports:
-      - '6379:6379'
   fast-api-service:
     build:
       context: .
@@ -14,8 +10,6 @@ services:
       - "8000:8000"
     volumes:
       - "./logs:/code/logs"
-    depends_on:
-      -  redisDB
     environment:
       AUTH0_DOMAIN: "${AUTH0_DOMAIN}"
       AUTH0_API_AUDIENCE: "${AUTH0_API_AUDIENCE}"

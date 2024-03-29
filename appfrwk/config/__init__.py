@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DATABASE_URL2: str
     collection_name: str
+    anthropic_api_key:str
 
 
 class ProductionConfig(Settings):

@@ -1,27 +1,22 @@
-import hashlib
 import os
 from typing import List
 
-from langchain_community.document_loaders.pdf import PyPDFLoader
-from redis import Redis
-from RagLLM.Raptor.dyamic_raptor import recursive_embed_cluster_summarize
-from autogen import Cache
-from fastapi import HTTPException, APIRouter, Depends, WebSocket
-from langchain.globals import set_debug
-from langchain.schema import Document
-from langchain_openai import OpenAIEmbeddings
-from semantic_text_splitter import TextSplitter
-from RagLLM.AutoGenIntergrations import AutoGenService
-from langchain_community.document_loaders import PyMuPDFLoader
 from RagLLM.LangChainIntergrations.langchainlayer import LangChainService
-from RagLLM.PGvector.models import DocumentModel, DocumentResponse
+from RagLLM.PGvector.models import DocumentResponse
 from RagLLM.PGvector.store import AsnyPgVector
 from RagLLM.PGvector.store_factory import get_vector_store
 from RagLLM.Processing.langchain_processing import load_conversation_history
+from RagLLM.Raptor.dyamic_raptor import TextClusterSummarizer
 from RagLLM.database import agent_schemas as schemas
 from RagLLM.database import db, crud, agent_schemas
 from RagLLM.database.user_schemas import UserCreate
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import Depends
+from langchain.globals import set_debug
+from langchain_anthropic import ChatAnthropic
+from langchain_community.chat_models.anthropic import ChatAnthropic
+from langchain_openai import OpenAIEmbeddings
+
 from appfrwk.config import get_config
 from appfrwk.logging_config import get_logger
 
@@ -73,144 +68,98 @@ def add_routes(app):
     app.include_router(router)
 
 
-@router.post("/add-documents/")
-async def add_documents(documents: list[DocumentModel]):
+
+
+
+async def save_temp_file(upload_file: UploadFile, directory: str = "/tmp") -> str:
     try:
+        file_path = os.path.join(directory, upload_file.filename)
+        with open(file_path, "wb") as file_object:
+            content = await upload_file.read()
+            file_object.write(content)
+        return file_path
+    finally:
+        await upload_file.close()
 
-        pdf_text = documents[0].page_content
-        splitter = TextSplitter.from_tiktoken_model("gpt-3.5-turbo", trim_chunks=False)
-        MIN_TOKENS = 100
-        MAX_TOKENS = 2000
 
-        chunks_with_model = splitter.chunks(pdf_text, chunk_capacity=(MIN_TOKENS, MAX_TOKENS))
-        for i, chunk in enumerate(chunks_with_model):
-            log.info(f"CHUNK WITH MODEL {i + 1}: ")
-        docs = [
-            Document(
-                page_content=doc,
-                metadata=(
+@router.post("/add-documents-upload")
+async def add_documents_upload_raptor(pdf_file: UploadFile = File(...), max_iteration: int = 5):
+    if pdf_file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="File must be a PDF.")
 
-                    {"digest": hashlib.md5(doc.encode()).hexdigest()}
-                ),
-            )
-            for doc in chunks_with_model
-        ]
-        ids = (
-            await pgvector_store.aadd_documents(docs)
-        )
+    try:
+        # Save the uploaded file temporarily
+        temp_file_path = await save_temp_file(pdf_file)
 
-        return {"message": "Documents added successfully", "id": ids}
+        # Proceed with your processing using the file path
+        # For example, let's say your summarizer needs a file path
+        model = ChatAnthropic(temperature=0, anthropic_api_key=config.anthropic_api_key,
+                              model_name="claude-3-opus-20240229")
+        summarizer = TextClusterSummarizer(token_limit=16000, data_directory=temp_file_path,
+                                           max_iterations=max_iteration)
+        final_output = summarizer.run()
+
+        # Add documents to pgvector_store as before
+        ids = await pgvector_store.aadd_documents(final_output)
+
+        # Cleanup: remove the temporary file after use
+        os.remove(temp_file_path)
+
+        return {"message": "Documents added successfully", "ids": ids}
 
     except Exception as e:
-        log.error(f"Internal error 500: {e}")
-        raise HTTPException(status_code=500)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/add-documents-internal-pdf/")
-async def add_documents(pdf_name: str):
+@router.get("/get-all-ids/")
+async def get_all_ids():
     try:
-        pdf_path = os.path.join(
-            os.getcwd(), "appfrwk", "config", "pdf", pdf_name)
-        loader = PyMuPDFLoader(pdf_path)
-        documents = loader.load()
-        text_splitter = RecursiveCharacterTextSplitter(
+        if isinstance(pgvector_store, AsnyPgVector):
+            ids = await pgvector_store.get_all_ids()
+        else:
+            ids = pgvector_store.get_all_ids()
 
-            chunk_size=500,
-            chunk_overlap=20,
-            length_function=len,
-            is_separator_regex=False,
-        )
-        docs = text_splitter.split_documents(documents)
-
-        ids = (
-            await pgvector_store.aadd_documents(docs)
-        )
-
-        return {"message": "Documents added successfully", "id": ids}
-
+        return ids
     except Exception as e:
-        log.error(f"Internal error 500: {e}")
-        raise HTTPException(status_code=500)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/add-documents-agentic_chunking/")
-async def add_documents_agentic_chunking(pdf_url: str):
+
+
+
+
+
+@router.post("/get-documents-by-ids/", response_model=list[DocumentResponse])
+async def get_documents_by_ids(ids: list[str]):
     try:
-        Service = LangChainService(model_name="gpt-3.5-turbo", template=template)
-        loader = PyPDFLoader(pdf_url)
-        documents = loader.load_and_split()
-        id_list = []
-        for docs in documents:
-            paragraphs = docs.page_content.split("\n\n")
+        if isinstance(pgvector_store, AsnyPgVector):
+            existing_ids = await pgvector_store.get_all_ids()
+            documents = await pgvector_store.get_documents_by_ids(ids)
+        else:
+            existing_ids = pgvector_store.get_all_ids()
+            documents = pgvector_store.get_documents_by_ids(ids)
 
-            documents_agentic_chunks = Service.get_agentic_chunks(paragraphs)
-            log.info(f"You have {len(documents)} propositions")
-            log.info(documents_agentic_chunks)
-            ids = (
-                await pgvector_store.aadd_documents(documents_agentic_chunks)
-            )
-            id_list.append(ids)
-        return id_list
+        if not all(id in existing_ids for id in ids):
+            raise HTTPException(status_code=404, detail="One or more IDs not found")
 
+        return documents
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        log.error(f"Internal error 500: {e}")
-        raise HTTPException(status_code=500)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/add-documents-internet")
-async def add_documents_internet(pdf_filename: str):
-    loader = PyPDFLoader(pdf_filename)
-    documents = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(
+async def add_documents_internet_raptor(pdf_filename: str, max_iteration: int):
+    summarizer = TextClusterSummarizer(token_limit=16000, data_directory=pdf_filename, max_iterations=max_iteration)
 
-        chunk_size=500,
-        chunk_overlap=20,
-        length_function=len,
-        is_separator_regex=False,
-    )
-    docs = text_splitter.split_documents(documents)
+    final_output = summarizer.run()
 
     ids = (
-        await pgvector_store.aadd_documents(docs)
+        await pgvector_store.aadd_documents(final_output)
     )
 
-    return {"message": "Documents added successfully", "id": ids}
-
-
-@router.post("/add-documents-internet-raptor")
-async def add_documents_internet_raptor(pdf_filename: str):
-    loader = PyPDFLoader(pdf_filename)
-    documents = loader.load()
-    docs_texts = [d.page_content for d in documents]
-    """
-    chunk_size_tok = 2000
-    text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=chunk_size_tok, chunk_overlap=0
-    )
-    d_sorted = sorted(documents, key=lambda x: x.metadata["source"])
-    d_reversed = list(reversed(d_sorted))
-    concatenated_content = "\n\n\n --- \n\n\n".join(
-        [doc.page_content for doc in d_reversed]
-    )
-    texts_split = text_splitter.split_text(concatenated_content)
-    """
-    leaf_texts = docs_texts
-    results = recursive_embed_cluster_summarize(leaf_texts, level=1, n_levels=3)
-    all_texts = leaf_texts.copy()
-    id_list = []
-    # Iterate through the results to extract summaries from each level and add them to all_texts
-    for level in sorted(results.keys()):
-        # Extract summaries from the current level's DataFrame
-        summaries = results[level][1]["summaries"].tolist()
-        # Extend all_texts with the summaries from the current level
-        all_texts.extend(summaries)
-
-        ids = (
-            await pgvector_store.aadd_documents(all_texts)
-        )
-        id_list.append(ids)
-
-    return {"message": "Documents added successfully", "ids": id_list}
+    return {"message": "Documents added successfully", "ids": ids}
 
 
 @router.post("/create-conversation", response_model=schemas.Conversation)
@@ -316,37 +265,6 @@ async def rag_chain_with_source_response(message: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/autogen_rag_chain_chat/")
-async def autogen_rag_response(message: schemas.UserMessage):
-    config_list = [
-        {
-            "model": "gpt-4",
-            "api_key": config.OPENAI_API_KEY,
-        }
-    ]
-
-    Service = AutoGenService(config_list)
-    try:
-
-        with Cache.redis(redis_url="redis://192.168.1.186:6379/0") as cache:
-            Service.user_proxy.initiate_chat(Service.assistant, message=message.message, cache=cache)
-
-            # Accessing the chat messages from both the user_proxy and the assistant
-        user_proxy_messages = Service.user_proxy.chat_messages
-        assistant_messages = Service.assistant.chat_messages
-
-        # Extracting the messages as lists
-        user_proxy_messages_list = [msg['content'] for msg in user_proxy_messages[Service.assistant]]
-        assistant_messages_list = [msg['content'] for msg in assistant_messages[Service.user_proxy]]
-
-        # Returning both lists of messages
-        return {"user_proxy_messages": user_proxy_messages_list, "assistant_messages": assistant_messages_list}
-
-    except Exception as e:
-        log.error(f"error code 500 {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/user-conversations", response_model=List[schemas.Conversation])
 async def get_user_conversations(user_sub: str, db_session=Depends(db.get_db)) -> List[schemas.Conversation]:
     """
@@ -376,11 +294,3 @@ async def get_conversation_messages(conversation_id: str, db_session=Depends(db.
             f"Error retrieving messages for conversation id: {conversation_id}")
         log.error(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-redis = Redis(host='redisDB', port=6379, db=0)
-
-
-@router.on_event("startup")
-def startup_event():
-    redis.ping()  # Check if Redis is up and running
