@@ -1,10 +1,7 @@
 from fastapi import Depends, FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-
 from app.plugin import load_plugins
-# Import routers directly from the 'router' folder's '__init__.py' file
 from app.api.router.routes import router
-
 from appfrwk.config import get_config
 from appfrwk.logging_config import setup_logging, get_logger
 from appfrwk.logging_config.log_middleware import LogMiddleware
