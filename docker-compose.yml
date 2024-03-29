@@ -15,6 +15,11 @@ services:
       AUTH0_API_AUDIENCE: "${AUTH0_API_AUDIENCE}"
       AUTH0_ISSUER: "${AUTH0_ISSUER}"
       AUTH0_ALGORITHMS: "${AUTH0_ALGORITHMS}"
+      DATABASE_URL: "${DATABASE_URL}"
+      OPENAI_API_KEY : "${OPENAI_API_KEY}"
+      DATABASE_URL2: "${DATABASE_URL2}"
+      collection_name: "${collection_name}"
+      anthropic_api_key: "${anthropic_api_key}"
 
   db:
     image: ankane/pgvector:latest

@@ -28,9 +28,10 @@ target_metadata = models.Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+from appfrwk.config import get_config
+config.set_main_option("sqlalchemy.url", get_config().DATABASE_URL)
 
 
-config.set_main_option("sqlalchemy.url", "postgresql+asyncpg://postgres:192.168.1.186@convo-db:5432/postgres")
 
 
 def run_migrations_offline() -> None:
