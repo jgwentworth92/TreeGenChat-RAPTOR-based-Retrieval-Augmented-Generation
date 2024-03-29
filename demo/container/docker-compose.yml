@@ -1,0 +1,24 @@
+version: "3.8"
+services:
+  firehoseai-api-service:
+    image: carlomos/firehoseai-api:demo
+    pull_policy: always #always pull the most recent version of the image
+    ports:
+      - 8000:8000 #port 8080 on host, 3000 in container so open localhost:8080
+    volumes:
+      - "./images:/code/images"
+      - "./logs:/code/logs"
+      - "./db:/code/db"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    labels:
+      com.centurylinklabs.watchtower.enable: true
+  streamlit-frontend-service:
+    image: carlomos/demo-frontend:latest
+    pull_policy: always
+    ports:
+      - 8501:8501
+    environment:
+      API_URL: http://firehoseai-api-service:8000/agents
+    labels:
+      com.centurylinklabs.watchtower.enable: true

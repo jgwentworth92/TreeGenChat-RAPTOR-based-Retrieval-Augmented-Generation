@@ -1,7 +1,12 @@
 # Initial Compile Stage
-FROM python:3.11-slim-bullseye AS compile-image
+FROM python:3.11-slim-bookworm AS compile-image
 
 WORKDIR /source
+
+# Install system dependencies including Git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and set file ownership
 RUN useradd appuser && \
@@ -18,7 +23,10 @@ RUN python3 -m venv /source/venv
 # Activate the virtual environment
 ENV PATH="/source/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
@@ -31,13 +39,9 @@ RUN chmod +x entrypoint.sh
 
 # Install the application
 RUN pip install -e .
-RUN set -e; \
-    for plugin in plugins/*/ ; do \
-      echo "Installing plugin: $plugin"; \
-      pip install -e "$plugin"; \
-    done
+
 # Operational Stage
-FROM python:3.11-slim-bullseye AS build-image
+FROM python:3.11-slim-bookworm AS build-image
 
 WORKDIR /source
 
