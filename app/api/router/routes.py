@@ -17,6 +17,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models.anthropic import ChatAnthropic
 from langchain_openai import OpenAIEmbeddings
 
+from app.api.schemas.user_schemas import DocumentInput, QuickMessage
 from appfrwk.config import get_config
 from appfrwk.logging_config import get_logger
 
@@ -66,9 +67,6 @@ except Exception as e:
 
 def add_routes(app):
     app.include_router(router)
-
-
-
 
 
 async def save_temp_file(upload_file: UploadFile, directory: str = "/tmp") -> str:
@@ -124,11 +122,6 @@ async def get_all_ids():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
-
-
-
 @router.post("/get-documents-by-ids/", response_model=list[DocumentResponse])
 async def get_documents_by_ids(ids: list[str]):
     try:
@@ -150,16 +143,19 @@ async def get_documents_by_ids(ids: list[str]):
 
 
 @router.post("/add-documents-internet")
-async def add_documents_internet_raptor(pdf_filename: str, max_iteration: int):
-    summarizer = TextClusterSummarizer(token_limit=16000, data_directory=pdf_filename, max_iterations=max_iteration)
+async def add_documents_internet_raptor(input_data: DocumentInput):
+    try:
+        summarizer = TextClusterSummarizer(token_limit=16000, data_directory=input_data.pdf_filename, max_iterations=input_data.max_iteration)
 
-    final_output = summarizer.run()
+        final_output = summarizer.run()
 
-    ids = (
-        await pgvector_store.aadd_documents(final_output)
-    )
+        ids = (
+            await pgvector_store.aadd_documents(final_output)
+        )
 
-    return {"message": "Documents added successfully", "ids": ids}
+        return {"message": "Documents added successfully", "ids": ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/create-conversation", response_model=schemas.Conversation)
@@ -248,14 +244,15 @@ async def agent_response(message: schemas.UserMessage, db_session=Depends(db.get
 
 
 @router.post("/rag_chain_with_source/")
-async def rag_chain_with_source_response(message: str):
+
+async def rag_chain_with_source_response(message: QuickMessage):
     Service = LangChainService(model_name=config.SERVICE_MODEL, template=template)
 
     try:
 
         result = Service.rag_chain_with_source.invoke(
 
-            message
+            message.question
 
         )
 
@@ -288,7 +285,13 @@ async def get_conversation_messages(conversation_id: str, db_session=Depends(db.
         log.info(
             f"Getting all messages for conversation id: {conversation_id}")
         db_messages = await crud.get_conversation_messages(db_session, conversation_id)
-        return db_messages
+
+        message_history = db_messages
+        message_history.sort(key=lambda x: x.created_at, reverse=False)
+        
+        return message_history
+
+
     except Exception as e:
         log.error(
             f"Error retrieving messages for conversation id: {conversation_id}")
