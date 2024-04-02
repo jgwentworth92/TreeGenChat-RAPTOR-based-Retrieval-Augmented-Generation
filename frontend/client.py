@@ -3,10 +3,10 @@ from typing import Dict, List
 import requests
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-SERVER_URL = "http://localhost:8000/RAG"
+SERVER_URL = "http://fast-api-service:8000/RAG"
 
 
-def get_fastapi_status(server_url: str = SERVER_URL):
+def get_fastapi_status(server_url: str = "http://fast-api-service:8000"):
     """Access FastAPI /docs endpoint to check if server is running"""
     try:
         response = requests.get(f"{server_url}/docs")
@@ -43,7 +43,7 @@ def post_store_pdfs(pdf_file) -> Dict:
     """Send POST request to FastAPI /store_pdfs endpoint"""
     files = {'pdf_file': (pdf_file.name, pdf_file, 'application/pdf')}
     data = {'max_iteration': 5}  # Example, adjust as needed
-    response = requests.post("http://localhost:8000/RAG/add-documents-upload", files=files, data=data)
+    response = requests.post(f"{SERVER_URL}/add-documents-upload", files=files, data=data)
     response.raise_for_status()
     return response.json()
 
@@ -65,7 +65,7 @@ def get_rag_summary(
 def send_message(conversation_id: str, message: str) -> Dict:
     try:
         payload = {"conversation_id": conversation_id, "message": message}
-        response = requests.post("http://localhost:8000/RAG/rag_chain_chat", json=payload)
+        response = requests.post("{SERVER_URL}/rag_chain_chat", json=payload)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as err:
@@ -81,7 +81,7 @@ def get_all_documents_file_name():
 def get_conversations(user_id: str) -> List[str]:
     try:
         response = requests.get(
-            "http://localhost:8000/RAG/user-conversations", params={"user_sub": user_id})
+            f"{SERVER_URL}/user-conversations", params={"user_sub": user_id})
         response.raise_for_status()
 
         # Parse JSON response and extract only the conversation IDs
@@ -95,7 +95,7 @@ def get_conversations(user_id: str) -> List[str]:
 
 def create_conversation(user_sub: str) -> str:
     new_conversation = requests.post(
-        "http://localhost:8000/RAG/create-conversation",
+        "{SERVER_URL}create-conversation",
         json={
             "user_sub": user_sub
         }
@@ -106,7 +106,7 @@ def create_conversation(user_sub: str) -> str:
 def get_messages(conversation_id: str) -> List[Dict]:
     try:
         response = requests.get(
-            "http://localhost:8000/RAG/get-conversation-messages", params={"conversation_id": conversation_id})
+            "{SERVER_URL}/get-conversation-messages", params={"conversation_id": conversation_id})
 
         response.raise_for_status()
         return response.json()
