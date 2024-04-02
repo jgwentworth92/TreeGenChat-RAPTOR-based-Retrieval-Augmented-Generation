@@ -65,7 +65,7 @@ def get_rag_summary(
 def send_message(conversation_id: str, message: str) -> Dict:
     try:
         payload = {"conversation_id": conversation_id, "message": message}
-        response = requests.post("{SERVER_URL}/rag_chain_chat", json=payload)
+        response = requests.post(f"{SERVER_URL}/rag_chain_chat", json=payload)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as err:
@@ -95,7 +95,7 @@ def get_conversations(user_id: str) -> List[str]:
 
 def create_conversation(user_sub: str) -> str:
     new_conversation = requests.post(
-        "{SERVER_URL}create-conversation",
+        f"{SERVER_URL}/create-conversation",
         json={
             "user_sub": user_sub
         }
@@ -106,7 +106,7 @@ def create_conversation(user_sub: str) -> str:
 def get_messages(conversation_id: str) -> List[Dict]:
     try:
         response = requests.get(
-            "{SERVER_URL}/get-conversation-messages", params={"conversation_id": conversation_id})
+            f"{SERVER_URL}/get-conversation-messages", params={"conversation_id": conversation_id})
 
         response.raise_for_status()
         return response.json()

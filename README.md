@@ -1,22 +1,23 @@
 
-# RAG Application Documentation
+# TreenGenChat Application Documentation
 
 ## Overview
 
-The RAG (Retrieval-Augmented Generation) Application is a comprehensive system designed to leverage the power of FastAPI, PostgreSQL, and vector database technologies for efficient document processing, retrieval, and conversational interfaces. The application provides a robust API for document upload, retrieval, and conversation management, facilitating advanced text analysis and interaction capabilities.
+TreenGenChat, powered by the Retrieval-Augmented Generation (RAG) framework, is a pioneering system designed to enhance document processing, retrieval, and conversational interfaces through the integration of FastAPI, PostgreSQL, and vector database technologies. This application leverages the novel RAPTOR methodology—Recursive Abstractive Processing for Tree-Organized Retrieval—to surpass traditional limitations by facilitating holistic understanding and processing of documents. TreenGenChat provides an advanced API for document upload, retrieval, conversation management, and interactive applications, setting a new benchmark in text analysis and interaction capabilities.
 
 ## Key Features
 
-- **Document Upload and Processing**: Supports uploading and processing documents in PDF format, incorporating them into the system for future retrieval and analysis.
-- **Document Retrieval**: Enables querying of documents by IDs, allowing for efficient data retrieval.
-- **Conversational Interface**: Facilitates the creation and management of conversations, along with quick response generation for interactive applications.
-- **Advanced Text Analysis**: Utilizes vector databases for semantic search and retrieval, enhancing the application's ability to understand and process natural language queries.
+- **Document Upload and Processing**: Support for PDF document uploads, with processing and integration for future retrieval and analysis.
+- **Advanced Document Retrieval**: Utilizes the RAPTOR approach for semantic search and retrieval across documents, employing recursive summaries for enhanced understanding.
+- **Conversational Interface**: Manages conversations with rapid response generation, underpinned by RAPTOR's tree-organized retrieval for depth and accuracy.
+- **Streamlit Frontend**: A user-friendly interface for interaction with TreenGenChat's features, including document management and conversation processing.
+- **Scalable Infrastructure**: Leveraging Docker, FastAPI, and PostgreSQL for a robust and scalable application framework.
 
 ## Getting Started
 
 ### Environment Setup
 
-The application requires specific environment variables for its operation, including configurations for Auth0, database URLs, and API keys. These variables should be defined in a `.env` file at the root of the project:
+Environment variables are crucial for configuring TreenGenChat, including Auth0 settings, database URLs, and API keys. These should be specified in a `.env` file located at the project's root:
 
 ```ini
 # .env example configuration
@@ -31,29 +32,30 @@ collection_name=
 
 ### Docker Compose
 
-Docker Compose is used to orchestrate the application and its dependencies, including the FastAPI service and PostgreSQL databases. Use the following commands to manage your Docker environment:
+Docker Compose orchestrates TreenGenChat and its dependencies, ensuring all services are networked under 'rag'. To manage your Docker environment:
 
 - **Start the Application**: `docker-compose up --build`
 - **Build Images**: `docker-compose build`
 
 ### API Endpoints
 
-The application provides a set of RESTful endpoints for document management and conversation processing, accessible through FastAPI's interactive documentation at `http://localhost:8000/docs` or `http://localhost:8000/redoc`.
+Access RESTful endpoints for document and conversation management via FastAPI's interactive documentation at `http://localhost:8000/docs` or `http://localhost:8000/redoc`.
 
 ## Directory Structure
 
-A brief overview of the project's directory structure:
+An outline of the TreenGenChat project structure:
 
 ```
 .
 ├── app/                    # Main FastAPI application
 ├── appfrwk/                # Common framework code
+├── frontend/               # Streamlit Application
 ├── .env                    # Environment variables
-├── docker-compose.yml      # Docker Compose configuration
+├── docker-compose.yml      # Docker Compose configuration for TreenGenChat
 ├── requirements.txt        # Python dependencies
 └── setup.py                # Python package setup
 ```
 
 ## Conclusion
 
-The RAG Application stands at the intersection of document processing and conversational AI, providing a versatile platform for developing advanced text analysis and interaction solutions. By leveraging Docker, FastAPI, and PostgreSQL, it offers a scalable and efficient infrastructure for a wide range of applications.
+TreenGenChat, with its foundation in the RAG framework and enhanced by RAPTOR's novel methodology, provides an unmatched platform for developing sophisticated text analysis and interactive solutions. Its use of Docker, FastAPI, PostgreSQL, and Streamlit frontends propels it to the forefront of conversational AI applications, enabling scalable and efficient infrastructures for diverse applications.
