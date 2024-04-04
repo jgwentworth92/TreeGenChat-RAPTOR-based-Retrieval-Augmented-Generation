@@ -18,7 +18,7 @@ def retrieval_form_container() -> None:
 
     if form.form_submit_button("Search"):
         with st.status("Running"):
-            response = client.get_rag_summary(rag_query)
+            response = client.get_rag_summary(rag_query, st.session_state['bearer_token'])
         st.session_state["history"].append(dict(query=rag_query, response=response.json()))
 
 
@@ -59,7 +59,14 @@ def app() -> None:
     st.title("📤 RAG with sources")
 
     retrieval_form_container()
+    if 'bearer_token' not in st.session_state:
+        username = "admin"
+        password = "password"
+        server_url = "http://fastapi:8000"  # Adjust as needed
 
+        # Get the authentication token
+        token = client.get_auth_token(server_url, username, password)
+        st.session_state['bearer_token'] = token
     if history := st.session_state.get("history"):
         history_display_container(history)
     else:

@@ -56,6 +56,14 @@ def app() -> None:
     st.title("🗨️ Chat Interface")
 
     user_sub = st.text_input("Enter your User ID:")
+    if 'bearer_token' not in st.session_state:
+        username = "admin"
+        password = "password"
+        server_url = "http://fastapi:8000"  # Adjust as needed
+
+        # Get the authentication token
+        token = client.get_auth_token(server_url, username, password)
+        st.session_state['bearer_token'] = token
     if 'new_conversation_id' not in st.session_state:
         st.session_state['new_conversation_id'] = None
     if 'selected_conversation_id' not in st.session_state:
@@ -66,12 +74,12 @@ def app() -> None:
 
     if user_sub:
         if st.button("Start New Conversation"):
-            new_conversation_id = client.create_conversation(user_sub)
+            new_conversation_id = client.create_conversation(user_sub, st.session_state['bearer_token'])
             st.session_state['conversations'][new_conversation_id] = []
             st.session_state['selected_conversation_id'] = new_conversation_id
 
         # Fetch conversations for the user
-        conversation_ids = client.get_conversations(user_sub)
+        conversation_ids = client.get_conversations(user_sub,st.session_state['bearer_token'])
         for conversation_id in conversation_ids:
             if conversation_id not in st.session_state['conversations']:
                 st.session_state['conversations'][conversation_id] = []
@@ -79,13 +87,14 @@ def app() -> None:
         # Use session_state to pre-select the conversation
         selected_conversation_id = st.selectbox(
             "Select a Conversation", options=list(st.session_state['conversations'].keys()),
-            index=list(st.session_state['conversations'].keys()).index(st.session_state['selected_conversation_id']) if st.session_state['selected_conversation_id'] in st.session_state['conversations'] else 0
+            index=list(st.session_state['conversations'].keys()).index(st.session_state['selected_conversation_id']) if
+            st.session_state['selected_conversation_id'] in st.session_state['conversations'] else 0
         )
         st.session_state['selected_conversation_id'] = selected_conversation_id
 
         if selected_conversation_id:
             # Fetch messages for the selected conversation
-            messages = client.get_messages(selected_conversation_id)
+            messages = client.get_messages(selected_conversation_id,st.session_state['bearer_token'])
             st.session_state['conversations'][selected_conversation_id] = messages
 
             # Display conversation history
@@ -105,10 +114,11 @@ def app() -> None:
                 if send_message and message_input:
                     if send_message and message_input:
                         with st.spinner("Thinking..."):
-                            response = client.send_message(selected_conversation_id, message_input)
+                            response = client.send_message(selected_conversation_id, message_input,st.session_state['bearer_token'])
                             with st.chat_message("assistant"):
                                 st.write(response)
                         st.rerun()
+
 
 if __name__ == "__main__":
     app()

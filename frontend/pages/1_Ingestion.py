@@ -62,7 +62,7 @@ def article_selection_container(arxiv_form: dict) -> None:
         # Status message while storing the article
         with st.status("Storing arXiv article"):
             # Store the selected article's ID (adjust the function name as per your actual implementation)
-            client.post_store_arxiv([url])
+            client.post_store_arxiv([url], st.session_state['bearer_token'])
 
 
 def pdf_upload_container():
@@ -70,7 +70,7 @@ def pdf_upload_container():
     uploaded_files = st.file_uploader("Upload PDF", type=["pdf"])
     if st.button("Upload"):
         with st.status("Storing PDFs"):
-            client.post_store_pdfs(uploaded_files)
+            client.post_store_pdfs(uploaded_files, st.session_state['bearer_token'])
 
 
 def stored_documents_container():
@@ -89,7 +89,14 @@ def app() -> None:
         layout="centered",
         menu_items={"Get help": None, "Report a bug": None},
     )
+    if 'bearer_token' not in st.session_state:
+        username = "admin"
+        password = "password"
+        server_url = "http://fastapi:8000"  # Adjust as needed
 
+        # Get the authentication token
+        token = client.get_auth_token(server_url, username, password)
+        st.session_state['bearer_token'] = token
 
     st.title("📥 Ingestion")
 
