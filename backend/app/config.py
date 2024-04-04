@@ -23,11 +23,6 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Generalized fast api boilerplate with config and logging.."
     VERSION: str = "0.1.0"
 
-    # Auth0 Config
-    AUTH0_DOMAIN: str
-    AUTH0_API_AUDIENCE: str
-    AUTH0_ISSUER: str
-    AUTH0_ALGORITHMS: str
     SECRET_KEY :str
     ALGORITHM :str
     ACCESS_TOKEN_EXPIRE_MINUTES : int =os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 3600)
