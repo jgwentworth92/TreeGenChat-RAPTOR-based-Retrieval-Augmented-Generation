@@ -32,7 +32,7 @@ target_metadata = models.Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-config.set_main_option("sqlalchemy.url", "postgresql+asyncpg://user:password@192.168.1.186:5432/myappdb")
+config.set_main_option("sqlalchemy.url", "postgresql+asyncpg://user:password@postgres:5432/myappdb")
 
 
 def run_migrations_offline() -> None:
